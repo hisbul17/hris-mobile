@@ -1,10 +1,12 @@
 # HRIS Backend API
 
-A comprehensive Human Resource Information System backend built with Node.js, Express.js, and PostgreSQL.
+A comprehensive Human Resource Information System backend built with Node.js, Express.js, and PostgreSQL featuring secure session-based authentication.
 
 ## Features
 
-- **Authentication & Authorization**: JWT-based authentication with role-based access control
+- **Session-based Authentication**: Secure cookie-based sessions with PostgreSQL storage
+- **CSRF Protection**: Cross-Site Request Forgery protection for all state-changing operations
+- **Password Security**: bcrypt hashing with configurable salt rounds
 - **Employee Management**: Complete CRUD operations for employee data
 - **Attendance Tracking**: Check-in/check-out functionality with location tracking
 - **Leave Management**: Leave request submission, approval workflow, and balance tracking
@@ -12,15 +14,33 @@ A comprehensive Human Resource Information System backend built with Node.js, Ex
 - **Audit Logging**: Track all system activities
 - **Security**: Rate limiting, CORS, helmet, and input validation
 
+## Security Features
+
+### Authentication & Authorization
+- **Session-based Authentication**: No JWT tokens, uses secure HTTP-only cookies
+- **Session Storage**: PostgreSQL-backed session store for scalability
+- **Role-based Access Control**: Admin, HRD, and User roles with different permissions
+- **Session Timeout**: Configurable session expiration and cleanup
+
+### Security Measures
+- **CSRF Protection**: Prevents cross-site request forgery attacks
+- **Password Hashing**: bcrypt with configurable salt rounds (default: 12)
+- **Rate Limiting**: Prevents brute force attacks and API abuse
+- **Security Headers**: Helmet.js for comprehensive security headers
+- **Input Validation**: express-validator for request validation
+- **CORS Protection**: Configurable cross-origin request security
+
 ## Tech Stack
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: PostgreSQL
-- **Authentication**: JWT (JSON Web Tokens)
+- **Session Store**: connect-pg-simple (PostgreSQL sessions)
+- **Authentication**: express-session with secure cookies
+- **Security**: Helmet, CORS, CSRF, Rate Limiting
 - **Validation**: express-validator
 - **Logging**: Winston
-- **Security**: Helmet, CORS, Rate Limiting
+- **Password Hashing**: bcryptjs
 
 ## Project Structure
 
@@ -28,23 +48,29 @@ A comprehensive Human Resource Information System backend built with Node.js, Ex
 backend/
 ├── src/
 │   ├── config/
-│   │   └── database.js          # Database configuration
+│   │   ├── database.js          # Database configuration
+│   │   └── session.js           # Session configuration
 │   ├── controllers/
 │   │   ├── authController.js    # Authentication logic
 │   │   ├── attendanceController.js # Attendance management
-│   │   └── leaveController.js   # Leave management
+│   │   ├── leaveController.js   # Leave management
+│   │   ├── userController.js    # User management
+│   │   └── departmentController.js # Department management
 │   ├── database/
 │   │   ├── migrations/          # Database migration files
 │   │   ├── migrate.js          # Migration runner
 │   │   └── seed.js             # Database seeder
 │   ├── middleware/
 │   │   ├── auth.js             # Authentication middleware
+│   │   ├── csrf.js             # CSRF protection
 │   │   ├── validation.js       # Input validation
 │   │   └── errorHandler.js     # Error handling
 │   ├── routes/
 │   │   ├── auth.js             # Authentication routes
 │   │   ├── attendance.js       # Attendance routes
 │   │   ├── leave.js            # Leave routes
+│   │   ├── users.js            # User management routes
+│   │   ├── departments.js      # Department routes
 │   │   └── index.js            # Route aggregator
 │   ├── utils/
 │   │   └── logger.js           # Logging utility
@@ -83,13 +109,17 @@ backend/
    DB_USER=postgres
    DB_PASSWORD=your_password
 
-   # JWT Configuration
-   JWT_SECRET=your_super_secret_jwt_key_here
-   JWT_EXPIRES_IN=7d
+   # Session Configuration
+   SESSION_SECRET=your_super_secret_session_key_here_make_it_very_long_and_random
+   SESSION_NAME=hris_session
+   SESSION_MAX_AGE=86400000
 
    # Server Configuration
    PORT=3000
    NODE_ENV=development
+
+   # Security Configuration
+   BCRYPT_ROUNDS=12
 
    # Frontend URL (for CORS)
    FRONTEND_URL=http://localhost:8081
@@ -142,11 +172,30 @@ npm run seed
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login
+- `POST /api/auth/login` - User login (creates session)
+- `POST /api/auth/logout` - User logout (destroys session)
 - `GET /api/auth/profile` - Get user profile
 - `PUT /api/auth/profile` - Update user profile
 - `POST /api/auth/change-password` - Change password
-- `POST /api/auth/refresh-token` - Refresh JWT token
+- `GET /api/auth/session` - Check session status
+- `GET /api/auth/csrf-token` - Get CSRF token
+
+### User Management (Admin/HRD)
+- `GET /api/users` - Get all users (Admin/HRD only)
+- `GET /api/users/:id` - Get user by ID (Admin/HRD only)
+- `POST /api/users` - Create user (Admin only)
+- `PUT /api/users/:id` - Update user (Admin only)
+- `DELETE /api/users/:id` - Delete user (Admin only)
+- `POST /api/users/:id/reset-password` - Reset password (Admin only)
+- `GET /api/users/stats` - Get user statistics (Admin/HRD only)
+
+### Department Management
+- `GET /api/departments` - Get all departments
+- `GET /api/departments/:id` - Get department by ID
+- `POST /api/departments` - Create department (Admin only)
+- `PUT /api/departments/:id` - Update department (Admin only)
+- `DELETE /api/departments/:id` - Delete department (Admin only)
+- `GET /api/departments/:id/employees` - Get department employees
 
 ### Attendance
 - `POST /api/attendance/check-in` - Check in
@@ -165,30 +214,30 @@ npm run seed
 - `GET /api/leave/all` - Get all leave requests (Admin/HRD only)
 - `PUT /api/leave/review/:id` - Review leave request (Admin/HRD only)
 
-## Database Schema
+## Session Management
 
-### Users Table
-- Employee information and authentication
-- Role-based access control (admin, hrd, user)
-- Department relationships
+### Session Configuration
+- **Store**: PostgreSQL-backed session store
+- **Cookie Settings**: 
+  - `httpOnly: true` - Prevents XSS attacks
+  - `secure: true` - HTTPS only in production
+  - `sameSite: 'lax'` - CSRF protection
+- **Session Timeout**: 24 hours (configurable)
+- **Session Cleanup**: Automatic cleanup of expired sessions
 
-### Departments Table
-- Organizational structure
-- Manager assignments
+### Session Security
+- Sessions are stored in PostgreSQL for scalability
+- Session cookies are HTTP-only and secure
+- CSRF tokens protect against cross-site request forgery
+- Session data includes user ID, email, role, and timestamps
 
-### Attendance Table
-- Check-in/check-out records
-- Location tracking
-- Working hours calculation
+## CSRF Protection
 
-### Leave Management Tables
-- `leave_types`: Different types of leave
-- `leave_requests`: Leave applications
-- `leave_balances`: Employee leave balances
+All state-changing operations (POST, PUT, DELETE) require CSRF tokens:
 
-### Audit & Notifications
-- `audit_logs`: System activity tracking
-- `notifications`: User notifications
+1. Get CSRF token: `GET /api/auth/csrf-token`
+2. Include token in request headers: `X-CSRF-Token: <token>`
+3. Or include in form data: `_csrf: <token>`
 
 ## Default Users (After Seeding)
 
@@ -198,15 +247,24 @@ npm run seed
 | HRD | hr@company.com | password123 | HR Manager |
 | User | john.doe@company.com | password123 | Regular Employee |
 
-## Security Features
+## Security Best Practices
 
-- **JWT Authentication**: Secure token-based authentication
-- **Role-based Access Control**: Different permissions for admin, HRD, and users
-- **Rate Limiting**: Prevent API abuse
-- **Input Validation**: Comprehensive request validation
-- **CORS Protection**: Cross-origin request security
-- **Helmet**: Security headers
-- **Password Hashing**: bcrypt for secure password storage
+### Password Security
+- **bcrypt Hashing**: Configurable salt rounds (default: 12)
+- **Password Requirements**: Minimum 6 characters (configurable)
+- **Password Reset**: Admin-only password reset functionality
+
+### Session Security
+- **Secure Cookies**: HTTP-only, secure, and SameSite attributes
+- **Session Rotation**: New session ID on login
+- **Session Cleanup**: Automatic cleanup of expired sessions
+- **Session Validation**: User existence and status validation on each request
+
+### API Security
+- **Rate Limiting**: 100 requests per 15 minutes (general), 5 per 15 minutes (auth)
+- **CORS Protection**: Configurable allowed origins
+- **Security Headers**: Comprehensive security headers via Helmet
+- **Input Validation**: All inputs validated and sanitized
 
 ## Error Handling
 

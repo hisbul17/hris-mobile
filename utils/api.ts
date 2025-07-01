@@ -1,51 +1,52 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TOKEN_KEY = 'auth_token';
+const SESSION_KEY = 'session_data';
 
-let authToken: string | null = null;
+let sessionData: any = null;
 
-export const setAuthToken = async (token: string | null) => {
-  authToken = token;
-  if (token) {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
+export const setSessionData = async (data: any) => {
+  sessionData = data;
+  if (data) {
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(data));
   } else {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await AsyncStorage.removeItem(SESSION_KEY);
   }
 };
 
-export const getAuthToken = async (): Promise<string | null> => {
-  if (authToken) {
-    return authToken;
+export const getSessionData = async (): Promise<any> => {
+  if (sessionData) {
+    return sessionData;
   }
   
   try {
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
-    authToken = token;
-    return token;
+    const data = await AsyncStorage.getItem(SESSION_KEY);
+    sessionData = data ? JSON.parse(data) : null;
+    return sessionData;
   } catch (error) {
-    console.error('Error getting auth token:', error);
+    console.error('Error getting session data:', error);
     return null;
   }
+};
+
+export const clearSession = async () => {
+  sessionData = null;
+  await AsyncStorage.removeItem(SESSION_KEY);
 };
 
 export const apiRequest = async (
   endpoint: string,
   method: string = 'GET',
-  data: any = null
+  data: any = null,
+  includeCredentials: boolean = true
 ) => {
-  const token = await getAuthToken();
-  
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   const config: RequestInit = {
     method,
     headers,
+    credentials: includeCredentials ? 'include' : 'omit', // Include cookies for session
   };
 
   if (data) {
@@ -57,6 +58,10 @@ export const apiRequest = async (
     const responseData = await response.json();
 
     if (!response.ok) {
+      // Handle session expiry
+      if (response.status === 401) {
+        await clearSession();
+      }
       throw new Error(responseData.message || 'Something went wrong');
     }
 
@@ -214,8 +219,21 @@ export const leaveAPI = {
 
 // Auth API functions
 export const authAPI = {
-  login: (email: string, password: string) =>
-    apiRequest('/auth/login', 'POST', { email, password }),
+  login: async (email: string, password: string) => {
+    const response = await apiRequest('/auth/login', 'POST', { email, password });
+    if (response.success) {
+      await setSessionData(response.data);
+    }
+    return response;
+  },
+  
+  logout: async () => {
+    try {
+      await apiRequest('/auth/logout', 'POST');
+    } finally {
+      await clearSession();
+    }
+  },
   
   getProfile: () =>
     apiRequest('/auth/profile'),
@@ -236,6 +254,9 @@ export const authAPI = {
   }) =>
     apiRequest('/auth/change-password', 'POST', data),
   
-  refreshToken: () =>
-    apiRequest('/auth/refresh-token', 'POST')
+  checkSession: () =>
+    apiRequest('/auth/session'),
+  
+  getCsrfToken: () =>
+    apiRequest('/auth/csrf-token', 'GET', null, false)
 };

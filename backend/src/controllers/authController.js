@@ -1,5 +1,4 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const logger = require('../utils/logger');
 
@@ -42,16 +41,11 @@ class AuthController {
         [user.id]
       );
 
-      // Generate JWT token
-      const token = jwt.sign(
-        { 
-          userId: user.id,
-          email: user.email,
-          role: user.role
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-      );
+      // Create session
+      req.session.userId = user.id;
+      req.session.userEmail = user.email;
+      req.session.userRole = user.role;
+      req.session.loginTime = new Date();
 
       // Remove password from response
       delete user.password_hash;
@@ -62,12 +56,44 @@ class AuthController {
         success: true,
         message: 'Login successful',
         data: {
-          token,
-          user
+          user,
+          sessionId: req.sessionID
         }
       });
     } catch (error) {
       logger.error('Login error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  // User logout
+  async logout(req, res) {
+    try {
+      const userEmail = req.session.userEmail;
+      
+      req.session.destroy((err) => {
+        if (err) {
+          logger.error('Logout error:', err);
+          return res.status(500).json({
+            success: false,
+            message: 'Logout failed'
+          });
+        }
+
+        res.clearCookie(process.env.SESSION_NAME || 'hris_session');
+        
+        logger.info(`User logged out: ${userEmail}`);
+        
+        res.json({
+          success: true,
+          message: 'Logout successful'
+        });
+      });
+    } catch (error) {
+      logger.error('Logout error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -184,7 +210,8 @@ class AuthController {
       }
 
       // Hash new password
-      const hashedNewPassword = await bcrypt.hash(new_password, 10);
+      const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+      const hashedNewPassword = await bcrypt.hash(new_password, saltRounds);
 
       // Update password
       await pool.query(
@@ -207,27 +234,47 @@ class AuthController {
     }
   }
 
-  // Refresh token
-  async refreshToken(req, res) {
+  // Check session status
+  async checkSession(req, res) {
     try {
-      // Generate new token
-      const token = jwt.sign(
-        { 
-          userId: req.user.id,
-          email: req.user.email,
-          role: req.user.role
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-      );
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'No active session'
+        });
+      }
 
       res.json({
         success: true,
-        message: 'Token refreshed successfully',
-        data: { token }
+        data: {
+          sessionId: req.sessionID,
+          userId: req.session.userId,
+          userEmail: req.session.userEmail,
+          userRole: req.session.userRole,
+          loginTime: req.session.loginTime,
+          lastActivity: req.session.lastActivity
+        }
       });
     } catch (error) {
-      logger.error('Refresh token error:', error);
+      logger.error('Check session error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  // Get CSRF token
+  async getCsrfToken(req, res) {
+    try {
+      res.json({
+        success: true,
+        data: {
+          csrfToken: req.csrfToken()
+        }
+      });
+    } catch (error) {
+      logger.error('Get CSRF token error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error'

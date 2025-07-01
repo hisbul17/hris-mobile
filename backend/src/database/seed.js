@@ -26,7 +26,8 @@ class DatabaseSeeder {
   }
 
   async seedUsers() {
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+    const hashedPassword = await bcrypt.hash('password123', saltRounds);
     
     const users = [
       {
@@ -247,6 +248,12 @@ class DatabaseSeeder {
       console.log('Admin: admin@company.com / password123');
       console.log('HRD: hr@company.com / password123');
       console.log('User: john.doe@company.com / password123');
+      console.log('\nSecurity features enabled:');
+      console.log('- Session-based authentication');
+      console.log('- CSRF protection');
+      console.log('- Secure password hashing (bcrypt)');
+      console.log('- Rate limiting');
+      console.log('- Security headers (helmet)');
       
     } catch (error) {
       console.error('Database seeding failed:', error);

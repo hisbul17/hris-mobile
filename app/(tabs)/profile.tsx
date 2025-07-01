@@ -13,7 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Mail, Phone, MapPin, Calendar, Settings, Bell, Shield, LogOut, CreditCard as Edit, Save, X } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { setAuthToken, authAPI } from '@/utils/api';
+import { authAPI } from '@/utils/api';
 
 interface ProfileData {
   first_name: string;
@@ -81,9 +81,14 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
-            setAuthToken(null);
-            router.replace('/(auth)/login');
+          onPress: async () => {
+            try {
+              await authAPI.logout();
+              router.replace('/(auth)/login');
+            } catch (error) {
+              // Even if logout fails on server, clear local session
+              router.replace('/(auth)/login');
+            }
           },
         },
       ]
@@ -116,8 +121,8 @@ export default function ProfileScreen() {
     {
       icon: <Shield size={20} color="#2563eb" />,
       title: 'Privacy & Security',
-      subtitle: 'Manage your privacy settings',
-      onPress: () => Alert.alert('Info', 'Privacy & Security settings'),
+      subtitle: 'Session-based authentication active',
+      onPress: () => Alert.alert('Security', 'Your session is protected with secure cookies and CSRF protection'),
     },
     {
       icon: <Settings size={20} color="#2563eb" />,
@@ -258,6 +263,29 @@ export default function ProfileScreen() {
                 </View>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        {/* Security Info */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Security Information</Text>
+          <View style={styles.securityCard}>
+            <View style={styles.securityItem}>
+              <Shield size={16} color="#16a34a" />
+              <Text style={styles.securityText}>Session-based authentication</Text>
+            </View>
+            <View style={styles.securityItem}>
+              <Shield size={16} color="#16a34a" />
+              <Text style={styles.securityText}>CSRF protection enabled</Text>
+            </View>
+            <View style={styles.securityItem}>
+              <Shield size={16} color="#16a34a" />
+              <Text style={styles.securityText}>Secure password hashing</Text>
+            </View>
+            <View style={styles.securityItem}>
+              <Shield size={16} color="#16a34a" />
+              <Text style={styles.securityText}>Rate limiting protection</Text>
+            </View>
           </View>
         </View>
 
@@ -556,6 +584,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6b7280',
+  },
+  securityCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#16a34a',
+  },
+  securityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  securityText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#16a34a',
+    marginLeft: 12,
   },
   logoutButton: {
     flexDirection: 'row',

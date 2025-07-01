@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { authAPI, setAuthToken } from '@/utils/api';
+import { authAPI } from '@/utils/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -32,8 +32,9 @@ export default function LoginScreen() {
 
     try {
       const response = await authAPI.login(email, password);
-      setAuthToken(response.data.token);
-      router.replace('/(tabs)');
+      if (response.success) {
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
@@ -55,6 +56,7 @@ export default function LoginScreen() {
             <View style={styles.header}>
               <Text style={styles.title}>HRIS Mobile</Text>
               <Text style={styles.subtitle}>Sign in to your account</Text>
+              <Text style={styles.securityNote}>Secure session-based authentication</Text>
             </View>
 
             <View style={styles.form}>
@@ -117,6 +119,14 @@ export default function LoginScreen() {
                 <Text style={styles.demoText}>HRD: hr@company.com / password123</Text>
                 <Text style={styles.demoText}>User: john.doe@company.com / password123</Text>
               </View>
+
+              <View style={styles.securityFeatures}>
+                <Text style={styles.securityTitle}>Security Features:</Text>
+                <Text style={styles.securityText}>• Session-based authentication</Text>
+                <Text style={styles.securityText}>• CSRF protection</Text>
+                <Text style={styles.securityText}>• Secure password hashing</Text>
+                <Text style={styles.securityText}>• Rate limiting protection</Text>
+              </View>
             </View>
 
             <View style={styles.footer}>
@@ -160,6 +170,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#e5e7eb',
+    marginBottom: 4,
+  },
+  securityNote: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#cbd5e1',
+    fontStyle: 'italic',
   },
   form: {
     backgroundColor: '#ffffff',
@@ -241,7 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     padding: 12,
     borderRadius: 8,
-    marginTop: 8,
+    marginBottom: 16,
   },
   demoTitle: {
     fontSize: 12,
@@ -253,6 +270,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter-Regular',
     color: '#6b7280',
+    marginBottom: 2,
+  },
+  securityFeatures: {
+    backgroundColor: '#ecfdf5',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#16a34a',
+  },
+  securityTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#166534',
+    marginBottom: 4,
+  },
+  securityText: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#15803d',
     marginBottom: 2,
   },
   footer: {
