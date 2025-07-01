@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,21 @@ import {
   SafeAreaView,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, MapPin, Clock, CircleCheck as CheckCircle, Circle as XCircle, RotateCcw } from 'lucide-react-native';
+import { Camera, MapPin, Clock, CheckCircle, XCircle, RotateCcw } from 'lucide-react-native';
+import { attendanceAPI } from '@/utils/api';
 
 export default function AttendanceScreen() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [todayStatus, setTodayStatus] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
 
   const currentTime = new Date().toLocaleTimeString('en-US', {
@@ -30,7 +35,27 @@ export default function AttendanceScreen() {
     day: 'numeric',
   });
 
+  useEffect(() => {
+    loadTodayStatus();
+  }, []);
+
+  const loadTodayStatus = async () => {
+    try {
+      const response = await attendanceAPI.getTodayStatus();
+      setTodayStatus(response.data);
+      setIsCheckedIn(response.data.is_checked_in || false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load attendance status');
+    }
+  };
+
   const handleAttendance = async () => {
+    if (Platform.OS === 'web') {
+      // For web platform, skip camera and directly handle attendance
+      await handleAttendanceAction();
+      return;
+    }
+
     if (!cameraPermission?.granted) {
       const permission = await requestCameraPermission();
       if (!permission.granted) {
@@ -41,21 +66,47 @@ export default function AttendanceScreen() {
     setShowCamera(true);
   };
 
+  const handleAttendanceAction = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isCheckedIn) {
+        // Check out
+        await attendanceAPI.checkOut({
+          check_out_location: { latitude: 0, longitude: 0 }, // Mock location for web
+          notes: 'Checked out via mobile app'
+        });
+        setIsCheckedIn(false);
+        Alert.alert('Success', 'Successfully checked out!');
+      } else {
+        // Check in
+        await attendanceAPI.checkIn({
+          check_in_location: { latitude: 0, longitude: 0 }, // Mock location for web
+          notes: 'Checked in via mobile app'
+        });
+        setIsCheckedIn(true);
+        Alert.alert('Success', 'Successfully checked in!');
+      }
+      
+      // Reload status
+      await loadTodayStatus();
+    } catch (err: any) {
+      setError(err.message || 'Failed to process attendance');
+      Alert.alert('Error', err.message || 'Failed to process attendance');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const takePicture = async () => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync();
         console.log('Photo taken:', photo);
         
-        // Simulate API call for attendance
-        setTimeout(() => {
-          setShowCamera(false);
-          setIsCheckedIn(!isCheckedIn);
-          Alert.alert(
-            'Success',
-            `Successfully ${isCheckedIn ? 'checked out' : 'checked in'}!`
-          );
-        }, 1000);
+        setShowCamera(false);
+        await handleAttendanceAction();
       } catch (error) {
         Alert.alert('Error', 'Failed to take picture. Please try again.');
       }
@@ -74,6 +125,15 @@ export default function AttendanceScreen() {
       </View>
 
       <View style={styles.content}>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadTodayStatus}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Current Status */}
         <View style={styles.statusContainer}>
           <LinearGradient
@@ -124,14 +184,18 @@ export default function AttendanceScreen() {
         </View>
 
         {/* Attendance Button */}
-        <TouchableOpacity style={styles.attendanceButton} onPress={handleAttendance}>
+        <TouchableOpacity 
+          style={styles.attendanceButton} 
+          onPress={handleAttendance}
+          disabled={isLoading}
+        >
           <LinearGradient
             colors={isCheckedIn ? ['#dc2626', '#b91c1c'] : ['#2563eb', '#1d4ed8']}
-            style={styles.attendanceButtonGradient}
+            style={[styles.attendanceButtonGradient, isLoading && styles.disabledButton]}
           >
             <Camera size={24} color="#ffffff" />
             <Text style={styles.attendanceButtonText}>
-              {isCheckedIn ? 'Check Out' : 'Check In'}
+              {isLoading ? 'Processing...' : (isCheckedIn ? 'Check Out' : 'Check In')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -139,68 +203,73 @@ export default function AttendanceScreen() {
         {/* Recent Attendance */}
         <View style={styles.recentCard}>
           <Text style={styles.recentTitle}>Recent Attendance</Text>
-          <View style={styles.recentItem}>
-            <View style={styles.recentDate}>
-              <Text style={styles.recentDateText}>Today</Text>
+          {todayStatus?.attendance ? (
+            <View style={styles.recentItem}>
+              <View style={styles.recentDate}>
+                <Text style={styles.recentDateText}>Today</Text>
+              </View>
+              <View style={styles.recentDetails}>
+                <Text style={styles.recentTime}>
+                  Check In: {todayStatus.attendance.check_in_time ? 
+                    new Date(todayStatus.attendance.check_in_time).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : 'Not checked in'}
+                </Text>
+                <Text style={styles.recentStatus}>
+                  {todayStatus.attendance.check_out_time ? 'Completed' : 'Working'}
+                </Text>
+              </View>
             </View>
-            <View style={styles.recentDetails}>
-              <Text style={styles.recentTime}>Check In: 08:30 AM</Text>
-              <Text style={styles.recentStatus}>Working</Text>
-            </View>
-          </View>
-          <View style={styles.recentItem}>
-            <View style={styles.recentDate}>
-              <Text style={styles.recentDateText}>Yesterday</Text>
-            </View>
-            <View style={styles.recentDetails}>
-              <Text style={styles.recentTime}>08:45 AM - 06:15 PM</Text>
-              <Text style={styles.recentStatus}>Completed</Text>
-            </View>
-          </View>
+          ) : (
+            <Text style={styles.noDataText}>No attendance record for today</Text>
+          )}
         </View>
       </View>
 
       {/* Camera Modal */}
-      <Modal visible={showCamera} animationType="slide">
-        <View style={styles.cameraContainer}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing={facing}
-          >
-            <View style={styles.cameraOverlay}>
-              <View style={styles.cameraHeader}>
-                <TouchableOpacity
-                  style={styles.cameraCloseButton}
-                  onPress={() => setShowCamera(false)}
-                >
-                  <XCircle size={24} color="#ffffff" />
-                </TouchableOpacity>
-                <Text style={styles.cameraTitle}>Take Attendance Photo</Text>
-                <TouchableOpacity
-                  style={styles.cameraFlipButton}
-                  onPress={toggleCameraFacing}
-                >
-                  <RotateCcw size={24} color="#ffffff" />
-                </TouchableOpacity>
-              </View>
+      {Platform.OS !== 'web' && (
+        <Modal visible={showCamera} animationType="slide">
+          <View style={styles.cameraContainer}>
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing={facing}
+            >
+              <View style={styles.cameraOverlay}>
+                <View style={styles.cameraHeader}>
+                  <TouchableOpacity
+                    style={styles.cameraCloseButton}
+                    onPress={() => setShowCamera(false)}
+                  >
+                    <XCircle size={24} color="#ffffff" />
+                  </TouchableOpacity>
+                  <Text style={styles.cameraTitle}>Take Attendance Photo</Text>
+                  <TouchableOpacity
+                    style={styles.cameraFlipButton}
+                    onPress={toggleCameraFacing}
+                  >
+                    <RotateCcw size={24} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.cameraFrame}>
-                <View style={styles.frameCorner} />
-                <View style={[styles.frameCorner, styles.frameCornerTopRight]} />
-                <View style={[styles.frameCorner, styles.frameCornerBottomLeft]} />
-                <View style={[styles.frameCorner, styles.frameCornerBottomRight]} />
-              </View>
+                <View style={styles.cameraFrame}>
+                  <View style={styles.frameCorner} />
+                  <View style={[styles.frameCorner, styles.frameCornerTopRight]} />
+                  <View style={[styles.frameCorner, styles.frameCornerBottomLeft]} />
+                  <View style={[styles.frameCorner, styles.frameCornerBottomRight]} />
+                </View>
 
-              <View style={styles.cameraFooter}>
-                <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                  <View style={styles.captureButtonInner} />
-                </TouchableOpacity>
+                <View style={styles.cameraFooter}>
+                  <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                    <View style={styles.captureButtonInner} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </CameraView>
-        </View>
-      </Modal>
+            </CameraView>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -233,6 +302,31 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
+  },
+  errorContainer: {
+    backgroundColor: '#fee2e2',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
   },
   statusContainer: {
     marginBottom: 24,
@@ -364,6 +458,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 32,
   },
+  disabledButton: {
+    opacity: 0.6,
+  },
   attendanceButtonText: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
@@ -416,6 +513,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#16a34a',
+  },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6b7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   cameraContainer: {
     flex: 1,

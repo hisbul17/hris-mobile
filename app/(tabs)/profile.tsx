@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,32 +11,66 @@ import {
   TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Mail, Phone, MapPin, Calendar, Settings, Bell, Shield, LogOut, CreditCard as Edit, Save, X } from 'lucide-react-native';
+import { User, Mail, Phone, MapPin, Calendar, Settings, Bell, Shield, LogOut, Edit, Save, X } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { setAuthToken, authAPI } from '@/utils/api';
 
 interface ProfileData {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
   position: string;
-  department: string;
-  joinDate: string;
-  employeeId: string;
+  department_name: string;
+  hire_date: string;
+  employee_id: string;
 }
 
 export default function ProfileScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({
-    name: 'John Doe',
-    email: 'john.doe@company.com',
-    phone: '+1 (555) 123-4567',
-    position: 'Software Developer',
-    department: 'Engineering',
-    joinDate: 'January 15, 2023',
-    employeeId: 'EMP001',
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    position: '',
+    department_name: '',
+    hire_date: '',
+    employee_id: '',
   });
-
   const [editData, setEditData] = useState<ProfileData>(profileData);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authAPI.getProfile();
+      const userData = response.data;
+      
+      const formattedData: ProfileData = {
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        position: userData.position || '',
+        department_name: userData.department_name || '',
+        hire_date: userData.hire_date ? new Date(userData.hire_date).toLocaleDateString() : '',
+        employee_id: userData.employee_id || '',
+      };
+      
+      setProfileData(formattedData);
+      setEditData(formattedData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -47,16 +81,29 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => router.replace('/(auth)/login'),
+          onPress: () => {
+            setAuthToken(null);
+            router.replace('/(auth)/login');
+          },
         },
       ]
     );
   };
 
-  const handleSaveProfile = () => {
-    setProfileData(editData);
-    setShowEditModal(false);
-    Alert.alert('Success', 'Profile updated successfully');
+  const handleSaveProfile = async () => {
+    try {
+      await authAPI.updateProfile({
+        first_name: editData.first_name,
+        last_name: editData.last_name,
+        phone: editData.phone,
+      });
+      
+      setProfileData(editData);
+      setShowEditModal(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to update profile');
+    }
   };
 
   const menuItems = [
@@ -80,6 +127,29 @@ export default function ProfileScreen() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadProfile}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -99,9 +169,11 @@ export default function ProfileScreen() {
               <Edit size={16} color="#ffffff" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.profileName}>{profileData.name}</Text>
+          <Text style={styles.profileName}>
+            {`${profileData.first_name} ${profileData.last_name}`.trim() || 'User'}
+          </Text>
           <Text style={styles.profilePosition}>{profileData.position}</Text>
-          <Text style={styles.profileDepartment}>{profileData.department}</Text>
+          <Text style={styles.profileDepartment}>{profileData.department_name}</Text>
         </LinearGradient>
 
         {/* Profile Information */}
@@ -124,7 +196,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{profileData.phone}</Text>
+                <Text style={styles.infoValue}>{profileData.phone || 'Not provided'}</Text>
               </View>
             </View>
 
@@ -134,7 +206,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Employee ID</Text>
-                <Text style={styles.infoValue}>{profileData.employeeId}</Text>
+                <Text style={styles.infoValue}>{profileData.employee_id}</Text>
               </View>
             </View>
 
@@ -144,7 +216,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Join Date</Text>
-                <Text style={styles.infoValue}>{profileData.joinDate}</Text>
+                <Text style={styles.infoValue}>{profileData.hire_date}</Text>
               </View>
             </View>
           </View>
@@ -217,24 +289,22 @@ export default function ProfileScreen() {
 
           <ScrollView style={styles.modalContent}>
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Full Name</Text>
+              <Text style={styles.formLabel}>First Name</Text>
               <TextInput
                 style={styles.formInput}
-                value={editData.name}
-                onChangeText={(text) => setEditData({ ...editData, name: text })}
-                placeholder="Enter your full name"
+                value={editData.first_name}
+                onChangeText={(text) => setEditData({ ...editData, first_name: text })}
+                placeholder="Enter your first name"
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Email</Text>
+              <Text style={styles.formLabel}>Last Name</Text>
               <TextInput
                 style={styles.formInput}
-                value={editData.email}
-                onChangeText={(text) => setEditData({ ...editData, email: text })}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
+                value={editData.last_name}
+                onChangeText={(text) => setEditData({ ...editData, last_name: text })}
+                placeholder="Enter your last name"
               />
             </View>
 
@@ -246,26 +316,6 @@ export default function ProfileScreen() {
                 onChangeText={(text) => setEditData({ ...editData, phone: text })}
                 placeholder="Enter your phone number"
                 keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Position</Text>
-              <TextInput
-                style={styles.formInput}
-                value={editData.position}
-                onChangeText={(text) => setEditData({ ...editData, position: text })}
-                placeholder="Enter your position"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Department</Text>
-              <TextInput
-                style={styles.formInput}
-                value={editData.department}
-                onChangeText={(text) => setEditData({ ...editData, department: text })}
-                placeholder="Enter your department"
               />
             </View>
 
@@ -289,6 +339,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#6b7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#dc2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
   },
   scrollView: {
     flex: 1,

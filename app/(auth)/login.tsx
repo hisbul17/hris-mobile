@@ -8,32 +8,37 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { authAPI, setAuthToken } from '@/utils/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    setError(null);
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setError('Please fill in all fields');
       return;
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Navigate to tabs after successful login
+
+    try {
+      const response = await authAPI.login(email, password);
+      setAuthToken(response.data.token);
       router.replace('/(tabs)');
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -53,6 +58,8 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.form}>
+              {error && <Text style={styles.errorMessage}>{error}</Text>}
+              
               <View style={styles.inputContainer}>
                 <User size={20} color="#6b7280" style={styles.inputIcon} />
                 <TextInput
@@ -103,6 +110,13 @@ export default function LoginScreen() {
               <TouchableOpacity style={styles.forgotPassword}>
                 <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
               </TouchableOpacity>
+
+              <View style={styles.demoCredentials}>
+                <Text style={styles.demoTitle}>Demo Credentials:</Text>
+                <Text style={styles.demoText}>Admin: admin@company.com / password123</Text>
+                <Text style={styles.demoText}>HRD: hr@company.com / password123</Text>
+                <Text style={styles.demoText}>User: john.doe@company.com / password123</Text>
+              </View>
             </View>
 
             <View style={styles.footer}>
@@ -160,6 +174,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  errorMessage: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+    marginBottom: 16,
+    backgroundColor: '#fee2e2',
+    padding: 12,
+    borderRadius: 8,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -206,11 +230,30 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignItems: 'center',
+    marginBottom: 16,
   },
   forgotPasswordText: {
     color: '#2563eb',
     fontSize: 14,
     fontFamily: 'Inter-Medium',
+  },
+  demoCredentials: {
+    backgroundColor: '#f3f4f6',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  demoTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  demoText: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#6b7280',
+    marginBottom: 2,
   },
   footer: {
     alignItems: 'center',
