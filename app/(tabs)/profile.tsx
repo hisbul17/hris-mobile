@@ -11,7 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Mail, Phone, MapPin, Calendar, Settings, Bell, Shield, LogOut, Edit, Save, X } from 'lucide-react-native';
+import { User, Mail, Phone, MapPin, Calendar, Settings, Bell, Shield, LogOut, CreditCard as Edit, Save, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { setAuthToken, authAPI } from '@/utils/api';
 
