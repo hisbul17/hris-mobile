@@ -8,7 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, Calendar, CheckCircle, AlertCircle, TrendingUp, MapPin } from 'lucide-react-native';
+import { Clock, Calendar, CircleCheck as CheckCircle, CircleAlert as AlertCircle, TrendingUp, MapPin } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { attendanceAPI, leaveAPI, authAPI } from '@/utils/api';
 

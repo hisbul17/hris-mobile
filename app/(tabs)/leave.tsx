@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, Calendar, Clock, CheckCircle, XCircle, AlertCircle, FileText, Send } from 'lucide-react-native';
+import { Plus, Calendar, Clock, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, FileText, Send } from 'lucide-react-native';
 import { leaveAPI } from '@/utils/api';
 
 interface LeaveType {

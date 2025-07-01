@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, MapPin, Clock, CheckCircle, XCircle, RotateCcw } from 'lucide-react-native';
+import { Camera, MapPin, Clock, CircleCheck as CheckCircle, Circle as XCircle, RotateCcw } from 'lucide-react-native';
 import { attendanceAPI } from '@/utils/api';
 
 export default function AttendanceScreen() {
