@@ -5,11 +5,15 @@ const router = express.Router();
 const authRoutes = require('./auth');
 const attendanceRoutes = require('./attendance');
 const leaveRoutes = require('./leave');
+const userRoutes = require('./users');
+const departmentRoutes = require('./departments');
 
 // API routes
 router.use('/auth', authRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/leave', leaveRoutes);
+router.use('/users', userRoutes);
+router.use('/departments', departmentRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -34,6 +38,23 @@ router.get('/', (req, res) => {
         updateProfile: 'PUT /api/auth/profile',
         changePassword: 'POST /api/auth/change-password',
         refreshToken: 'POST /api/auth/refresh-token'
+      },
+      users: {
+        getAllUsers: 'GET /api/users (Admin/HRD only)',
+        getUserById: 'GET /api/users/:id (Admin/HRD only)',
+        createUser: 'POST /api/users (Admin only)',
+        updateUser: 'PUT /api/users/:id (Admin only)',
+        deleteUser: 'DELETE /api/users/:id (Admin only)',
+        resetPassword: 'POST /api/users/:id/reset-password (Admin only)',
+        getUserStats: 'GET /api/users/stats (Admin/HRD only)'
+      },
+      departments: {
+        getAllDepartments: 'GET /api/departments',
+        getDepartmentById: 'GET /api/departments/:id',
+        createDepartment: 'POST /api/departments (Admin only)',
+        updateDepartment: 'PUT /api/departments/:id (Admin only)',
+        deleteDepartment: 'DELETE /api/departments/:id (Admin only)',
+        getDepartmentEmployees: 'GET /api/departments/:id/employees'
       },
       attendance: {
         checkIn: 'POST /api/attendance/check-in',

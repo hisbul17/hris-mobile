@@ -1,11 +1,31 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const TOKEN_KEY = 'auth_token';
+
 let authToken: string | null = null;
 
-export const setAuthToken = (token: string | null) => {
+export const setAuthToken = async (token: string | null) => {
   authToken = token;
+  if (token) {
+    await AsyncStorage.setItem(TOKEN_KEY, token);
+  } else {
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  }
 };
 
-export const getAuthToken = () => {
-  return authToken;
+export const getAuthToken = async (): Promise<string | null> => {
+  if (authToken) {
+    return authToken;
+  }
+  
+  try {
+    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    authToken = token;
+    return token;
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    return null;
+  }
 };
 
 export const apiRequest = async (
@@ -13,12 +33,14 @@ export const apiRequest = async (
   method: string = 'GET',
   data: any = null
 ) => {
+  const token = await getAuthToken();
+  
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
 
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const config: RequestInit = {
@@ -45,6 +67,88 @@ export const apiRequest = async (
   }
 };
 
+// User API functions
+export const userAPI = {
+  getAllUsers: (params?: { search?: string; role?: string; department_id?: string; is_active?: string; page?: number; limit?: number }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return apiRequest(`/users${queryString}`);
+  },
+  
+  getUserById: (id: number) =>
+    apiRequest(`/users/${id}`),
+  
+  createUser: (data: {
+    employee_id: string;
+    email: string;
+    password: string;
+    role: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    position?: string;
+    department_id?: string;
+    hire_date?: string;
+  }) =>
+    apiRequest('/users', 'POST', data),
+  
+  updateUser: (id: number, data: {
+    employee_id?: string;
+    email?: string;
+    role?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    position?: string;
+    department_id?: string;
+    hire_date?: string;
+    is_active?: boolean;
+  }) =>
+    apiRequest(`/users/${id}`, 'PUT', data),
+  
+  deleteUser: (id: number) =>
+    apiRequest(`/users/${id}`, 'DELETE'),
+  
+  resetPassword: (id: number, new_password: string) =>
+    apiRequest(`/users/${id}/reset-password`, 'POST', { new_password }),
+  
+  getUserStats: () =>
+    apiRequest('/users/stats')
+};
+
+// Department API functions
+export const departmentAPI = {
+  getAllDepartments: (params?: { is_active?: string; page?: number; limit?: number }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return apiRequest(`/departments${queryString}`);
+  },
+  
+  getDepartmentById: (id: number) =>
+    apiRequest(`/departments/${id}`),
+  
+  createDepartment: (data: {
+    name: string;
+    description?: string;
+    manager_id?: number;
+  }) =>
+    apiRequest('/departments', 'POST', data),
+  
+  updateDepartment: (id: number, data: {
+    name?: string;
+    description?: string;
+    manager_id?: number;
+    is_active?: boolean;
+  }) =>
+    apiRequest(`/departments/${id}`, 'PUT', data),
+  
+  deleteDepartment: (id: number) =>
+    apiRequest(`/departments/${id}`, 'DELETE'),
+  
+  getDepartmentEmployees: (id: number, params?: { is_active?: string; page?: number; limit?: number }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return apiRequest(`/departments/${id}/employees${queryString}`);
+  }
+};
+
 // Attendance API functions
 export const attendanceAPI = {
   checkIn: (data: { check_in_location?: any; notes?: string }) =>
@@ -64,6 +168,11 @@ export const attendanceAPI = {
   getSummary: (params?: { month?: number; year?: number }) => {
     const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
     return apiRequest(`/attendance/summary${queryString}`);
+  },
+  
+  getAllAttendance: (params?: { start_date?: string; end_date?: string; user_id?: number; status?: string; page?: number; limit?: number }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return apiRequest(`/attendance/all${queryString}`);
   }
 };
 
@@ -92,7 +201,15 @@ export const leaveAPI = {
   },
   
   cancelRequest: (id: number) =>
-    apiRequest(`/leave/cancel/${id}`, 'PUT')
+    apiRequest(`/leave/cancel/${id}`, 'PUT'),
+  
+  getAllRequests: (params?: { status?: string; user_id?: number; leave_type_id?: number; start_date?: string; end_date?: string; page?: number; limit?: number }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return apiRequest(`/leave/all${queryString}`);
+  },
+  
+  reviewRequest: (id: number, data: { status: 'approved' | 'rejected'; review_notes?: string }) =>
+    apiRequest(`/leave/review/${id}`, 'PUT', data)
 };
 
 // Auth API functions
