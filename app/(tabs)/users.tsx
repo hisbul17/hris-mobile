@@ -12,24 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
-  Key, 
-  Eye, 
-  EyeOff,
-  X,
-  Save,
-  Users as UsersIcon,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Shield
-} from 'lucide-react-native';
+import { Plus, Search, Filter, CreditCard as Edit, Trash2, Key, Eye, EyeOff, X, Save, Users as UsersIcon, Mail, Phone, MapPin, Calendar, Shield } from 'lucide-react-native';
 import { userAPI, departmentAPI } from '@/utils/api';
 
 interface User {

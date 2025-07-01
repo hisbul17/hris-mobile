@@ -10,22 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  Settings,
-  Users,
-  Building2,
-  TrendingUp,
-  Calendar,
-  Clock,
-  Shield,
-  Activity,
-  BarChart3,
-  PieChart,
-  UserCheck,
-  UserX,
-  Plus,
-  Edit
-} from 'lucide-react-native';
+import { Settings, Users, Building2, TrendingUp, Calendar, Clock, Shield, Activity, ChartBar as BarChart3, ChartPie as PieChart, UserCheck, UserX, Plus, CreditCard as Edit } from 'lucide-react-native';
 import { userAPI, departmentAPI, attendanceAPI, leaveAPI } from '@/utils/api';
 
 interface DashboardStats {
