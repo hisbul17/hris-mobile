@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Chrome as Home, Clock, CalendarDays, User, Users, Settings } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { getAuthToken, authAPI } from '@/utils/api';
+import { supabase } from '@/utils/supabase';
 
 export default function TabLayout() {
   const [userRole, setUserRole] = useState<string>('user');
@@ -9,10 +9,17 @@ export default function TabLayout() {
   useEffect(() => {
     const loadUserRole = async () => {
       try {
-        const token = await getAuthToken();
-        if (token) {
-          const response = await authAPI.getProfile();
-          setUserRole(response.data.role);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          
+          if (profile) {
+            setUserRole(profile.role);
+          }
         }
       } catch (error) {
         console.error('Failed to load user role:', error);

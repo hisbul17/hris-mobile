@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -31,10 +32,8 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const response = await authAPI.login(email, password);
-      if (response.success) {
-        router.replace('/(tabs)');
-      }
+      await authAPI.signIn(email, password);
+      router.replace('/(tabs)');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
@@ -56,7 +55,7 @@ export default function LoginScreen() {
             <View style={styles.header}>
               <Text style={styles.title}>HRIS Mobile</Text>
               <Text style={styles.subtitle}>Sign in to your account</Text>
-              <Text style={styles.securityNote}>Secure session-based authentication</Text>
+              <Text style={styles.securityNote}>Powered by Supabase Authentication</Text>
             </View>
 
             <View style={styles.form}>
@@ -115,17 +114,17 @@ export default function LoginScreen() {
 
               <View style={styles.demoCredentials}>
                 <Text style={styles.demoTitle}>Demo Credentials:</Text>
-                <Text style={styles.demoText}>Admin: admin@company.com / password123</Text>
-                <Text style={styles.demoText}>HRD: hr@company.com / password123</Text>
-                <Text style={styles.demoText}>User: john.doe@company.com / password123</Text>
+                <Text style={styles.demoText}>Create an account or use test credentials</Text>
+                <Text style={styles.demoText}>Email: test@example.com</Text>
+                <Text style={styles.demoText}>Password: password123</Text>
               </View>
 
               <View style={styles.securityFeatures}>
                 <Text style={styles.securityTitle}>Security Features:</Text>
-                <Text style={styles.securityText}>• Session-based authentication</Text>
-                <Text style={styles.securityText}>• CSRF protection</Text>
+                <Text style={styles.securityText}>• Supabase Authentication</Text>
+                <Text style={styles.securityText}>• Row Level Security (RLS)</Text>
+                <Text style={styles.securityText}>• Real-time data sync</Text>
                 <Text style={styles.securityText}>• Secure password hashing</Text>
-                <Text style={styles.securityText}>• Rate limiting protection</Text>
               </View>
             </View>
 

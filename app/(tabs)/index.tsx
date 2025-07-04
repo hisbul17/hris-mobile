@@ -46,10 +46,10 @@ export default function HomeScreen() {
         leaveAPI.getMyBalance()
       ]);
 
-      setUserProfile(profileResponse.data);
-      setTodayStatus(statusResponse.data);
-      setAttendanceSummary(summaryResponse.data);
-      setLeaveBalance(balanceResponse.data);
+      setUserProfile(profileResponse);
+      setTodayStatus(statusResponse);
+      setAttendanceSummary(summaryResponse);
+      setLeaveBalance(balanceResponse);
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard data');
     } finally {
@@ -90,8 +90,8 @@ export default function HomeScreen() {
 
   const userName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.trim() : 'User';
   const attendancePercentage = attendanceSummary?.summary?.attendance_percentage || 0;
-  const totalLeaveUsed = leaveBalance?.balances?.reduce((sum: number, balance: any) => sum + parseFloat(balance.used_days || 0), 0) || 0;
-  const totalLeaveRemaining = leaveBalance?.balances?.reduce((sum: number, balance: any) => sum + parseFloat(balance.remaining_days || 0), 0) || 0;
+  const totalLeaveUsed = leaveBalance?.balances?.reduce((sum: number, balance: any) => sum + (balance.used_days || 0), 0) || 0;
+  const totalLeaveRemaining = leaveBalance?.balances?.reduce((sum: number, balance: any) => sum + (balance.remaining_days || 0), 0) || 0;
 
   return (
     <SafeAreaView style={styles.container}>

@@ -9,6 +9,8 @@ import {
   Inter_600SemiBold,
   Inter_700Bold
 } from '@expo-google-fonts/inter';
+import { supabase } from '@/utils/supabase';
+import { router } from 'expo-router';
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -19,6 +21,19 @@ export default function RootLayout() {
     'Inter-SemiBold': Inter_600SemiBold,
     'Inter-Bold': Inter_700Bold,
   });
+
+  useEffect(() => {
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.replace('/(tabs)');
+      } else if (event === 'SIGNED_OUT') {
+        router.replace('/(auth)/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   if (!fontsLoaded) {
     return null;
