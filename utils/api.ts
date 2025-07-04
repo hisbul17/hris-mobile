@@ -236,7 +236,7 @@ export const departmentAPI = {
       .from('departments')
       .select(`
         *,
-        manager:users (
+        manager:users!fk_departments_manager (
           id,
           first_name,
           last_name
@@ -258,7 +258,7 @@ export const departmentAPI = {
       .from('departments')
       .select(`
         *,
-        manager:users (
+        manager:users!fk_departments_manager (
           id,
           first_name,
           last_name
