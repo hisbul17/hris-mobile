@@ -74,7 +74,7 @@ export const authAPI = {
       .from('users')
       .select(`
         *,
-        departments (
+        departments!users_department_id_fkey (
           id,
           name
         )
@@ -122,7 +122,7 @@ export const userAPI = {
       .from('users')
       .select(`
         *,
-        departments (
+        departments!users_department_id_fkey (
           id,
           name
         )
@@ -155,7 +155,7 @@ export const userAPI = {
       .from('users')
       .select(`
         *,
-        departments (
+        departments!users_department_id_fkey (
           id,
           name
         )
@@ -236,7 +236,7 @@ export const departmentAPI = {
       .from('departments')
       .select(`
         *,
-        manager:users!departments_manager_id_fkey (
+        manager:users (
           id,
           first_name,
           last_name
@@ -258,7 +258,7 @@ export const departmentAPI = {
       .from('departments')
       .select(`
         *,
-        manager:users!departments_manager_id_fkey (
+        manager:users (
           id,
           first_name,
           last_name
@@ -482,11 +482,11 @@ export const attendanceAPI = {
       .from('attendance')
       .select(`
         *,
-        users (
+        users!attendance_user_id_fkey (
           first_name,
           last_name,
           employee_id,
-          departments (
+          departments!users_department_id_fkey (
             name
           )
         )
@@ -648,11 +648,11 @@ export const leaveAPI = {
       .from('leave_requests')
       .select(`
         *,
-        users (
+        user:users!leave_requests_user_id_fkey (
           first_name,
           last_name,
           employee_id,
-          departments (
+          departments!users_department_id_fkey (
             name
           )
         ),
