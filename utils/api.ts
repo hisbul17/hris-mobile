@@ -28,11 +28,13 @@ export const authAPI = {
     if (authError) throw authError;
 
     if (authData.user) {
+      // Exclude password from userData when inserting into users table
       const { error: profileError } = await supabase
         .from('users')
         .insert({
           id: authData.user.id,
           email,
+          password_hash: '', // This field exists in schema but should be empty for Supabase auth users
           ...userData,
         });
 
@@ -179,7 +181,9 @@ export const userAPI = {
     department_id?: number;
     hire_date?: string;
   }) => {
-    return authAPI.signUp(userData.email, userData.password, userData);
+    // Extract password and pass the rest to signUp
+    const { password, ...userProfileData } = userData;
+    return authAPI.signUp(userData.email, password, userProfileData);
   },
 
   updateUser: async (id: string, updates: Tables['users']['Update']) => {
